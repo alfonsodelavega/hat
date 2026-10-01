@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="theme-color" content="#f4f5ef">
+	<title>Good Draw — Name picker</title>
+	<style>
+		@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap');
+
+		:root {
+			color-scheme: light;
+			--paper: #f4f5ef;
+			--surface: #fffefa;
+			--ink: #1d2924;
+			--muted: #77817a;
+			--line: #dfe4dc;
+			--green: #275c47;
+			--green-dark: #1d4938;
+			--lime: #d5f278;
+			--coral: #f08066;
+			--mono: 'DM Mono', monospace;
+			--sans: 'Manrope', sans-serif;
+		}
+
+		* { box-sizing: border-box; }
+
+		body {
+			min-width: 320px;
+			min-height: 100vh;
+			margin: 0;
+			color: var(--ink);
+			background-color: var(--paper);
+			background-image: radial-gradient(#d7ddd3 0.7px, transparent 0.7px);
+			background-size: 17px 17px;
+			font-family: var(--sans);
+		}
+
+		button, textarea { font: inherit; }
+		[hidden] { display: none !important; }
+
+		button:focus-visible, textarea:focus-visible {
+			outline: 3px solid #8cba62;
+			outline-offset: 3px;
+		}
+
+		.app-shell {
+			width: min(920px, calc(100% - 40px));
+			min-height: 100svh;
+			margin: 0 auto;
+			display: flex;
+			flex-direction: column;
+		}
+
+		.field-meta {
+			font-family: var(--mono);
+			font-size: 11px;
+			letter-spacing: 0;
+			text-transform: uppercase;
+		}
+
+		main {
+			flex: 1;
+			display: flex;
+			align-items: center;
+			padding: 14px 0;
+		}
+
+		.workspace {
+			width: 100%;
+		}
+
+		.entry-panel {
+			width: min(100%, 620px);
+			display: flex;
+			flex-direction: column;
+			margin: 0 auto;
+			padding: 16px;
+			border: 1px solid rgba(29, 41, 36, 0.16);
+			border-radius: 10px;
+			background: var(--surface);
+			box-shadow: 0 18px 55px rgba(44, 60, 48, 0.08);
+		}
+
+		.field-meta, .stage-top, .stage-bottom {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 12px;
+		}
+
+		.field-label {
+			margin-bottom: 9px;
+			font-size: 12px;
+			font-weight: 800;
+		}
+
+		.field-meta { color: var(--muted); font-size: 10px; }
+
+		textarea {
+			width: 100%;
+			height: min(540px, calc(100svh - 260px));
+			min-height: 220px;
+			resize: vertical;
+			padding: 8px 12px;
+			border: 1px solid #d8ded5;
+			border-radius: 7px;
+			background: #fbfcf8;
+			color: var(--ink);
+			font-size: 14px;
+			line-height: 1.35;
+			transition: border-color 160ms ease, box-shadow 160ms ease;
+		}
+
+		textarea::placeholder { color: #a0a9a1; }
+		textarea:focus { border-color: #739b70; box-shadow: 0 0 0 3px rgba(115, 155, 112, 0.12); outline: 0; }
+
+		.entry-footer {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 12px;
+			margin-top: 12px;
+		}
+
+		.helper { color: var(--muted); font-size: 11px; line-height: 1.5; }
+
+		.button {
+			min-height: 42px;
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			gap: 10px;
+			padding: 0 14px;
+			border: 0;
+			border-radius: 6px;
+			cursor: pointer;
+			font-size: 12px;
+			font-weight: 800;
+			transition: transform 150ms ease, background-color 150ms ease, opacity 150ms ease;
+		}
+
+		.button:hover:not(:disabled) { transform: translateY(-1px); }
+		.button:active:not(:disabled) { transform: translateY(0); }
+		.button:disabled { cursor: not-allowed; opacity: 0.42; }
+
+		.button-primary { background: var(--green); color: white; }
+		.button-primary:hover:not(:disabled) { background: var(--green-dark); }
+		.button-primary .arrow { color: var(--lime); font-size: 17px; line-height: 1; }
+		.button-quiet { min-height: 36px; padding: 0 10px; border: 1px solid var(--line); background: transparent; color: var(--ink); }
+		.button-quiet:hover:not(:disabled) { background: #f2f5ee; }
+		.picked-count { color: var(--green); font-family: var(--mono); font-size: 10px; }
+
+		dialog {
+			width: min(440px, calc(100vw - 32px));
+			max-height: calc(100svh - 32px);
+			padding: 18px;
+			border: 1px solid rgba(29, 41, 36, 0.2);
+			border-radius: 9px;
+			background: var(--surface);
+			color: var(--ink);
+			box-shadow: 0 24px 70px rgba(24, 39, 30, 0.22);
+		}
+
+		dialog::backdrop { background: rgba(22, 33, 27, 0.45); backdrop-filter: blur(3px); }
+		.dialog-header, .dialog-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+		.dialog-header { padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+		.dialog-kicker { margin: 0 0 3px; color: var(--muted); font-family: var(--mono); font-size: 9px; text-transform: uppercase; }
+		.dialog-title { margin: 0; font-size: 17px; font-weight: 800; }
+		.dialog-close { width: 32px; height: 32px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 5px; background: transparent; color: var(--ink); cursor: pointer; font-size: 19px; }
+		.picked-list { max-height: min(380px, calc(100svh - 210px)); display: grid; gap: 4px; overflow-y: auto; margin: 12px 0; padding: 0; list-style: none; counter-reset: picked; }
+		.picked-list li { display: grid; grid-template-columns: 30px minmax(0, 1fr); align-items: center; gap: 8px; min-height: 34px; padding: 5px 8px; border-bottom: 1px solid #edf0e9; counter-increment: picked; font-size: 13px; overflow-wrap: anywhere; }
+		.picked-list li::before { content: counter(picked, decimal-leading-zero); color: var(--muted); font-family: var(--mono); font-size: 10px; }
+		.dialog-footer { padding-top: 12px; border-top: 1px solid var(--line); }
+		.dialog-summary { color: var(--muted); font-family: var(--mono); font-size: 10px; }
+
+		.stage {
+			min-width: 0;
+			display: none;
+			flex-direction: column;
+			padding: 20px 24px 18px;
+			background: #f8f9f4;
+		}
+
+		.workspace.is-draw-view {
+			height: calc(100svh - 48px);
+			min-height: 0;
+			display: flex;
+		}
+
+		.workspace.is-draw-view .entry-panel { display: none; }
+
+		.workspace.is-draw-view .stage {
+			flex: 1;
+			height: calc(100svh - 48px);
+			min-height: 0;
+			display: flex;
+		}
+
+		.stage-top { justify-content: flex-end; color: #6e7971; }
+
+		.status-pill {
+			display: inline-flex;
+			align-items: center;
+			gap: 7px;
+			padding: 5px 7px;
+			border: 1px solid #dfe5db;
+			border-radius: 999px;
+			color: #637066;
+			font-family: var(--mono);
+			font-size: 10px;
+			white-space: nowrap;
+		}
+
+		.status-dot { width: 6px; height: 6px; border-radius: 50%; background: #8fa38c; }
+		.status-pill.is-drawing .status-dot { background: var(--coral); animation: pulse 700ms ease-in-out infinite alternate; }
+
+		.draw-area {
+			flex: 1;
+			min-height: 0;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			padding: 20px 0 12px;
+			text-align: center;
+		}
+
+		.winner-label {
+			min-height: 14px;
+			margin-bottom: 12px;
+			color: #768077;
+			font-family: var(--mono);
+			font-size: 10px;
+			letter-spacing: 0;
+			text-transform: uppercase;
+		}
+
+		.winner-name {
+			max-width: 100%;
+			display: flex;
+			flex-wrap: wrap;
+			align-items: center;
+			justify-content: center;
+			gap: 3px 1px;
+			padding: 0 6px;
+			color: var(--green);
+			font-size: clamp(30px, 4vw, 52px);
+			font-weight: 800;
+			line-height: 1.25;
+			overflow-wrap: anywhere;
+		}
+
+		.letter {
+			min-width: 0.48em;
+			display: inline-block;
+			opacity: 0;
+			transform: translateY(13px) rotateX(-80deg);
+			transform-origin: 50% 100%;
+			animation: letter-land 380ms cubic-bezier(.15,.8,.22,1.25) forwards;
+		}
+
+		.letter.is-space { min-width: 0.3em; }
+		.letter.is-punctuation { min-width: auto; }
+
+		.winner-name.is-complete .letter:not(.is-space) { text-shadow: 0 7px 18px rgba(39, 92, 71, 0.13); }
+
+		.winner-subtitle { min-height: 18px; margin: 12px 0 0; color: #77817a; font-size: 12px; }
+
+		.stage-bottom { min-height: 40px; padding-top: 10px; border-top: 1px solid #e1e5de; }
+		.remaining-note { color: #78827b; font-family: var(--mono); font-size: 10px; }
+		.stage-actions { display: flex; gap: 8px; }
+
+		.toast {
+			position: fixed;
+			z-index: 3;
+			left: 50%;
+			bottom: 24px;
+			padding: 9px 12px;
+			border-radius: 6px;
+			background: var(--ink);
+			color: white;
+			font-size: 12px;
+			opacity: 0;
+			pointer-events: none;
+			transform: translate(-50%, 8px);
+			transition: opacity 180ms ease, transform 180ms ease;
+		}
+
+		.toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
+
+		@keyframes letter-land { to { opacity: 1; transform: translateY(0) rotateX(0); } }
+		@keyframes pulse { to { opacity: 0.35; } }
+
+		@media (max-width: 760px) {
+			.app-shell { width: calc(100% - 24px); }
+			main { padding: 12px 0; }
+			.entry-panel { padding: 22px 18px; }
+			textarea { min-height: 140px; }
+			.workspace.is-draw-view, .workspace.is-draw-view .stage { height: calc(100svh - 24px); min-height: 0; }
+			.workspace.is-draw-view .stage { padding: 21px 20px 19px; }
+			.winner-name { font-size: clamp(30px, 9vw, 46px); }
+		}
+
+		@media (max-width: 390px) {
+			.entry-panel { padding-right: 14px; padding-left: 14px; }
+			.workspace.is-draw-view .stage { padding-right: 14px; padding-left: 14px; }
+			.entry-footer { align-items: flex-end; }
+			.helper { max-width: 120px; }
+			.button { padding-right: 13px; padding-left: 13px; }
+			.stage-actions { gap: 5px; }
+			.button-quiet { padding: 0 9px; }
+		}
+
+		@media (prefers-reduced-motion: reduce) {
+			*, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+		}
+	</style>
+</head>
+<body>
+	<div class="app-shell">
+		<main>
+			<section class="workspace" aria-label="Random name picker">
+				<div class="entry-panel">
+					<div class="field-meta"><span>One name per line</span><span id="name-count">0 names</span></div>
+					<textarea id="names-input" spellcheck="false" aria-describedby="input-help" placeholder="Alex Morgan&#10;Sam Rivera&#10;Jordan Lee"></textarea>
+					<div class="entry-footer">
+						<span class="helper" id="input-help">Blank lines are skipped.</span>
+						<button class="button button-primary" id="start-button" type="button" disabled>
+							Pick a name <span class="arrow" aria-hidden="true">↗</span>
+						</button>
+					</div>
+				</div>
+
+				<section class="stage" aria-label="Draw results" aria-live="polite">
+					<div class="stage-top">
+						<span class="status-pill" id="status-pill"><span class="status-dot" aria-hidden="true"></span><span id="status-text">Ready when you are</span></span>
+					</div>
+
+					<div class="draw-area" id="draw-area">
+					</div>
+
+					<div class="stage-bottom">
+						<span class="remaining-note" id="remaining-note">No names in play</span>
+						<div class="stage-actions">
+							<button class="button button-quiet" id="picked-button" type="button" aria-haspopup="dialog" disabled>Picked names <span class="picked-count" id="picked-count">0</span></button>
+							<button class="button button-quiet" id="edit-button" type="button" hidden>Edit list</button>
+							<button class="button button-primary" id="draw-button" type="button" disabled>Draw again <span class="arrow" aria-hidden="true">↗</span></button>
+						</div>
+					</div>
+				</section>
+			</section>
+		</main>
+		<dialog id="picked-dialog" aria-labelledby="picked-dialog-title">
+			<div class="dialog-header">
+				<div>
+					<p class="dialog-kicker">Draw history</p>
+					<h2 class="dialog-title" id="picked-dialog-title">Picked names</h2>
+				</div>
+				<button class="dialog-close" id="dialog-close" type="button" aria-label="Close dialog">×</button>
+			</div>
+			<ol class="picked-list" id="picked-list"></ol>
+			<div class="dialog-footer">
+				<span class="dialog-summary" id="dialog-summary"></span>
+				<button class="button button-primary" id="dialog-done" type="button">Done</button>
+			</div>
+		</dialog>
+	</div>
+
+	<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+	<script>
+		const namesInput = document.querySelector('#names-input');
+		const workspace = document.querySelector('.workspace');
+		const nameCount = document.querySelector('#name-count');
+		const startButton = document.querySelector('#start-button');
+		const drawButton = document.querySelector('#draw-button');
+		const editButton = document.querySelector('#edit-button');
+		const pickedButton = document.querySelector('#picked-button');
+		const pickedCount = document.querySelector('#picked-count');
+		const pickedDialog = document.querySelector('#picked-dialog');
+		const pickedList = document.querySelector('#picked-list');
+		const dialogSummary = document.querySelector('#dialog-summary');
+		const drawArea = document.querySelector('#draw-area');
+		const statusPill = document.querySelector('#status-pill');
+		const statusText = document.querySelector('#status-text');
+		const remainingNote = document.querySelector('#remaining-note');
+		const toast = document.querySelector('#toast');
+
+		let participants = [];
+		let winners = [];
+		let isDrawing = false;
+		let toastTimer;
+
+		function parseNames() {
+			return namesInput.value.split(/\r?\n/).map((name) => name.trim()).filter(Boolean);
+		}
+
+		function updateInputState() {
+			const count = parseNames().length;
+			nameCount.textContent = `${count} ${count === 1 ? 'name' : 'names'}`;
+			startButton.disabled = count === 0;
+		}
+
+		function remainingNames() {
+			const picked = new Set(winners);
+			return participants.filter((name) => !picked.has(name));
+		}
+
+		function updateRemainingState() {
+			const count = remainingNames().length;
+			remainingNote.textContent = participants.length === 0 ? 'No names in play' : count === 0 ? 'All names have been picked' : `${count} ${count === 1 ? 'name' : 'names'} remaining`;
+			drawButton.disabled = count === 0 || isDrawing;
+		}
+
+		function updatePickedDialog() {
+			pickedCount.textContent = String(winners.length);
+			pickedButton.disabled = winners.length === 0;
+			pickedList.replaceChildren(...winners.map((name) => {
+				const item = document.createElement('li');
+				item.textContent = name;
+				return item;
+			}));
+			dialogSummary.textContent = `${winners.length} ${winners.length === 1 ? 'name' : 'names'} picked`;
+		}
+
+		function showToast(message) {
+			toast.textContent = message;
+			toast.classList.add('is-visible');
+			clearTimeout(toastTimer);
+			toastTimer = setTimeout(() => toast.classList.remove('is-visible'), 2600);
+		}
+
+		function makeDrawMarkup() {
+			return '<div class="winner-label">And the name is...</div><div class="winner-name" id="winner-name" aria-label="Winner"></div>';
+		}
+
+		function revealName(name) {
+			drawArea.innerHTML = makeDrawMarkup();
+			const winnerName = drawArea.querySelector('#winner-name');
+			const subtitle = drawArea.querySelector('#winner-subtitle');
+			const glyphs = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+			const characters = Array.from(name);
+			const revealOrder = characters.map((character, index) => index).filter((index) => characters[index].trim() !== '');
+			for (let index = revealOrder.length - 1; index > 0; index -= 1) {
+				const swapIndex = Math.floor(Math.random() * (index + 1));
+				[revealOrder[index], revealOrder[swapIndex]] = [revealOrder[swapIndex], revealOrder[index]];
+			}
+
+			characters.forEach((character) => {
+				const letter = document.createElement('span');
+				const isSpace = character.trim() === '';
+				letter.className = `letter${isSpace ? ' is-space' : ''}${/[.,!?;:'"()\-]/u.test(character) ? ' is-punctuation' : ''}`;
+				letter.setAttribute('aria-hidden', 'true');
+				letter.textContent = isSpace ? '\u00a0' : '';
+				winnerName.append(letter);
+			});
+
+			const stagger = 240;
+			const duration = 850;
+			revealOrder.forEach((characterIndex, orderIndex) => {
+				const letter = winnerName.children[characterIndex];
+				const finalCharacter = characters[characterIndex];
+				const delay = orderIndex * stagger;
+				const start = performance.now() + delay;
+				const tick = (now) => {
+					const progress = Math.min(1, (now - start) / duration);
+					if (progress >= 1) {
+						letter.textContent = finalCharacter;
+						letter.setAttribute('aria-label', finalCharacter);
+						return;
+					}
+					letter.textContent = glyphs[Math.floor(Math.random() * glyphs.length)];
+					requestAnimationFrame(tick);
+				};
+				setTimeout(() => requestAnimationFrame(tick), delay);
+			});
+
+			const finishAfter = (revealOrder.length - 1) * stagger + duration + 250;
+			setTimeout(() => {
+				winnerName.classList.add('is-complete');
+				winnerName.setAttribute('aria-label', name);
+				statusPill.classList.remove('is-drawing');
+				statusText.textContent = 'Draw complete';
+				isDrawing = false;
+				updateRemainingState();
+			}, finishAfter);
+		}
+
+		function drawWinner() {
+			if (isDrawing) return;
+			const available = remainingNames();
+			if (available.length === 0) {
+				showToast('Everyone has had a turn. Edit the list to start fresh.');
+				return;
+			}
+
+			isDrawing = true;
+			drawButton.disabled = true;
+			startButton.disabled = true;
+			statusPill.classList.add('is-drawing');
+			statusText.textContent = 'Finding a name';
+			const winner = available[Math.floor(Math.random() * available.length)];
+			winners.push(winner);
+			updateRemainingState();
+			updatePickedDialog();
+			revealName(winner);
+		}
+
+		function startDraw() {
+			const names = parseNames();
+			if (names.length === 0) {
+				namesInput.focus();
+				showToast('Add at least one name to get started.');
+				return;
+			}
+			participants = names;
+			winners = [];
+			updatePickedDialog();
+			workspace.classList.add('is-draw-view');
+			editButton.hidden = false;
+			updateRemainingState();
+			drawWinner();
+		}
+
+		function returnToList() {
+			isDrawing = false;
+			participants = [];
+			winners = [];
+			updatePickedDialog();
+			workspace.classList.remove('is-draw-view');
+			statusPill.classList.remove('is-drawing');
+			statusText.textContent = 'Ready when you are';
+			editButton.hidden = true;
+			startButton.disabled = parseNames().length === 0;
+			updateRemainingState();
+			namesInput.focus();
+		}
+
+		namesInput.addEventListener('input', updateInputState);
+		startButton.addEventListener('click', startDraw);
+		drawButton.addEventListener('click', drawWinner);
+		editButton.addEventListener('click', returnToList);
+		pickedButton.addEventListener('click', () => pickedDialog.showModal());
+		document.querySelector('#dialog-close').addEventListener('click', () => pickedDialog.close());
+		document.querySelector('#dialog-done').addEventListener('click', () => pickedDialog.close());
+		pickedDialog.addEventListener('click', (event) => {
+			if (event.target === pickedDialog) pickedDialog.close();
+		});
+
+		updateInputState();
+		updateRemainingState();
+		updatePickedDialog();
+	</script>
+</body>
+</html>
